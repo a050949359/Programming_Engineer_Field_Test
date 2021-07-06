@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="http://cdn.datatables.net/1.10.21/css/jquery.dataTables.css">
+    <title>Document</title>
+    <style>
+        table.dataTable td {
+            font-size: 0.7em;
+            
+          }
+    </style>
+</head>
+<body>
+    <div class="container" style="margin-top: 5px;">
+        <div class="row">
+            <div class="col-3">
+                <form >
+                    <div style="padding: 5px;">
+                        <label for="from_date">起始日期</label>
+                        <input style="margin-bottom: 5px;" type="text" class="form-control" id="from_date" placeholder="ex:2019-8-12">
+                    
+                        <label for="from_time">起始時間</label>
+                        <input style="margin-bottom: 5px;" type="text" class="form-control" id="from_time" placeholder="ex:05:20:28">
+                    
+                        <label for="from_usec">起始微秒</label>
+                        <input type="text" class="form-control" id="from_usec" placeholder="ex:4~874403">
+                    </div>   
+                    <div style="padding: 5px;">
+                        <label for="from_date">結束日期</label>
+                        <input style="margin-bottom: 5px;" type="text" class="form-control" id="to_date" placeholder="ex:2019-8-12">
+                    
+                        <label for="from_time">結束時間</label>
+                        <input style="margin-bottom: 5px;" type="text" class="form-control" id="to_time" placeholder="ex:15:30:20">
+                    
+                        <label for="from_usec">結束微秒</label>
+                        <input type="text" class="form-control" id="to_usec" placeholder="ex:4~874403">
+                    </div>
+                    <div>
+                        <label for="sourceip">Source IP</label>
+                        <input class="form-control" style="margin-bottom: 5px;" type="text" name="sourceip" id="sourceip" placeholder="ex:127.0.0.1" style="margin-top: 5px;">
+                        <label for="fqdn">FQDN</label>
+                        <input class="form-control" style="margin-bottom: 5px;" type="text" name="fqdn" id="fqdn" placeholder="ex:qr or graph.facebook.com" style="margin-top: 5px;">
+                    </div>
+                </form>
+                <button class="btn btn-primary" onclick="logout()" style="margin-top: 5px; margin-bottom:5px; margin-left:5px; float: right;">登出</button>
+                <button class="btn btn-primary" onclick="search()" style="margin-top: 5px; margin-bottom:5px; float: right;">搜尋</button>
+                <div id="warning"></div>
+            </div>
+            <div class="col-9 table-responsive" id="table_dv" style="height: 100vh;">
+                <table id="tbl" >
+                    <thead>
+                        <tr>
+                            <th>date</th>
+                            <th>time</th>
+                            <th>usec</th>
+                            <th>source_ip</th>
+                            <th>source_port</th>
+                            <th>destination_ip</th>
+                            <th>destination_port</th>
+                            <th>fqdn</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script type="text/javascript" charset="utf8" src="http://cdn.datatables.net/1.10.21/js/jquery.dataTables.js"></script>
+    <script>
+        function search() {
+            $("button").prop('disabled', true);
+
+            var item = new Object();
+            item = {
+                "from_date":$('#from_date'),
+                "from_time":$('#from_time'),
+                "from_usec":$('#from_usec'),
+                "to_date":$('#to_date'),
+                "to_time":$('#to_time'),
+                "to_usec":$('#to_usec'),
+                "sourceip":$('#sourceip'),
+                "fqdn":$('#fqdn')
+            };
+
+            if(($('#to_date').val().length > 0 && $('#from_date').val().length === 0) ||
+            ($('#to_time').val().length > 0 && $('#from_time').val().length === 0) ||
+            ($('#to_usec').val().length > 0 && $('#from_usec').val().length === 0)){
+                $('#warning').html("<p style='color:red;'>只有結束日期,時間或微秒</p>")
+                return 
+            } else
+                $('#warning').html("")
+
+            if($('#to_date').val().length > 0 && !isValidDate($('#to_date').val())){
+                $('#warning').html("<p style='color:red;'>日期格式錯誤</p>")
+                return
+            }
+
+            if($('#from_date').val().length > 0 && !isValidDate($('#from_date').val())){
+                $('#warning').html("<p style='color:red;'>日期格式錯誤</p>")
+                return
+            }
+
+            if($('#to_time').val().length > 0 && !isValidTime($('#to_time').val())){
+                $('#warning').html("<p style='color:red;'>時間格式錯誤</p>")
+                return
+            }
+
+            if($('#from_time').val().length > 0 && !isValidTime($('#from_time').val())){
+                $('#warning').html("<p style='color:red;'>時間格式錯誤</p>")
+                return
+            }
+
+            if($('#sourceip').val().length > 0 && !isValidIP($('#sourceip').val())){
+                $('#warning').html("<p style='color:red;'>ip格式錯誤</p>")
+                return
+            }
+                
+            $.getJSON("http://178.128.102.235:5000/search", {
+                "from_date":$('#from_date').val(),
+                "from_time":$('#from_time').val(),
+                "from_usec":$('#from_usec').val(),
+                "to_date":$('#to_date').val(),
+                "to_time":$('#to_time').val(),
+                "to_usec":$('#to_usec').val(),
+                "sourceip":$('#sourceip').val(),
+                "fqdn":$('#fqdn').val()
+            }, function(data){
+                $('.table-responsive').html("");
+                $('.table-responsive').html('<table id="tbl"><thead><tr><th>date</th><th>time</th><th>usec</th><th>source_ip</th><th>source_port</th><th>destination_ip</th><th>destination_port</th><th>fqdn</th></tr></thead></table>');
+
+                $('#tbl').dataTable({
+                    "data": data,
+                    "paging": true,
+                    "lengthChange": false,
+                    "iDisplayLength": 50,
+                    "sort": true,
+                    "searching": false,
+                    "scrollY": 500,
+                    "columns": [
+                    { data: "date" },
+                    { data: "time" },
+                    { data: "usec" },
+                    { data: "source_ip" },
+                    { data: "source_port" },
+                    { data: "destination_ip" },
+                    { data: "destination_port" },
+                    { data: "fqdn" }
+                    ]
+                });
+                
+            }).always(function() { $("button").prop('disabled', false); });
+            //console.log(item)
+        }
+        function isValidIP(ipString) {
+            var regexp = /^(?!0)(?!.*\.$)((1?\d?\d|25[0-5]|2[0-4]\d)(\.|$)){4}$/
+            return regexp.test(ipString);
+        }
+        function isValidTime(timeString) {
+            var regexp = /([01][0-9]|[02][0-3]):[0-5][0-9]:[0-5][0-9]/;
+            return regexp.test(timeString);
+        }
+
+        function isValidDate(dateString) {
+            var regEx = /^\d{4}-\d{2}-\d{2}$/;
+            if(!dateString.match(regEx)) return false;  // Invalid format
+            var d = new Date(dateString);
+            var dNum = d.getTime();
+            if(!dNum && dNum !== 0) return false; // NaN value, Invalid date
+            return d.toISOString().slice(0,10) === dateString;
+        }
+
+        function logout() {
+	        window.location.href = "http://178.128.102.235:5000/logout";
+        }
+          
+    </script>
+</body>
+</html>
